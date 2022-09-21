@@ -1,0 +1,93 @@
+pipeline{
+    
+    agent none
+        
+        tools {
+            maven 'maven3.0'
+            jdk 'java1.8'
+        }
+    stages {
+        stage ('git repo clone to master') {
+            agent {
+                node {
+                    label 'built-in'
+            customWorkspace '/root/project2/'
+                    
+                }
+            }
+         
+         environment {
+            PATH = "/root/maven/apache-maven-3.8.6/bin:$PATH"
+        }
+         
+            
+            steps{
+               git 'https://github.com/ashrayp18/game-of-life.git'
+               dir("/root/project2/") {
+                sh 'mvn install'
+                
+            }
+        }
+    }
+ stage ('deoply war on tomcat server on node 1'){
+    agent {
+        node{
+            label '172.31.20.150'
+            customWorkspace '/home/ec2-user/project2/'
+        }
+        
+    }
+     steps{
+         sh "sudo rm -rf /home/ec2-user/tomcat"
+         sh "sudo mkdir /home/ec2-user/tomcat/"
+         sh "sudo chown -R ec2-user:ec2-user /home/ec2-user/tomcat/"
+         dir ("/home/ec2-user/tomcat/"){
+         sh "sudo wget https://downloads.apache.org/tomcat/tomcat-9/v9.0.65/bin/apache-tomcat-9.0.65.zip "
+         sh " sudo unzip apache-tomcat-9.0.65.zip"
+             sh " sudo chmod -R 777 apache-tomcat-9.0.65"
+         }
+      
+         sh "sudo /home/ec2-user/tomcat/apache-tomcat-9.0.65/bin/./startup.sh "
+     }
+     
+ }
+ stage ('deoply war on tomcat server on node 2'){
+    agent {
+        node{
+            label '172.31.17.248'
+            customWorkspace '/home/ec2-user/project2/'
+        }
+        
+    }
+     steps{
+          sh "sudo rm -rf /home/ec2-user/tomcat"
+         sh "sudo mkdir /home/ec2-user/tomcat/"
+         sh "sudo chown -R ec2-user:ec2-user /home/ec2-user/tomcat/"
+         dir ("/home/ec2-user/tomcat/"){
+         sh "sudo wget https://downloads.apache.org/tomcat/tomcat-9/v9.0.65/bin/apache-tomcat-9.0.65.zip "
+         sh " sudo unzip apache-tomcat-9.0.65.zip"
+             sh " sudo chmod -R 777 apache-tomcat-9.0.65"
+         }
+
+         sh "sudo /home/ec2-user/tomcat/apache-tomcat-9.0.65/bin/./startup.sh "
+ 
+}
+}
+    stage('copy war to both nodes'){
+         agent {
+        node{
+            label 'built-in'
+        }
+         }
+     steps{
+         
+         sh "sudo scp -i /root/test.pem /root/project2/gameoflife-web/target/gameoflife.war ec2-user@172.31.20.150:/home/ec2-user/tomcat/apache-tomcat-9.0.65/webapps/"
+         sh "sudo scp -i /root/test.pem /root/project2/gameoflife-web/target/gameoflife.war ec2-user@172.31.17.248:/home/ec2-user/tomcat/apache-tomcat-9.0.65/webapps/"
+         
+     }   
+    }
+    }
+    
+
+}
+
